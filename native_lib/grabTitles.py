@@ -22,7 +22,8 @@ checkAndDeleteFile(dest_path)
 
 print("Downloading db.go...")
 
-with urllib.request.urlopen("https://napi.v10lator.de/db?t=go") as response:
+req = urllib.request.Request("https://napi.v10lator.de/db?t=go", headers={"User-Agent": "NUSspliBuilder/2.1"})
+with urllib.request.urlopen(req) as response:
     content_bytes = response.read()
     content = content_bytes.decode("utf-8") 
 
