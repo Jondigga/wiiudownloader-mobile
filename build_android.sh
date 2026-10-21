@@ -1,12 +1,11 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 NDK="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/29.0.14206865}"
 API=21
 PREBUILT=darwin-x86_64
 
 cd native_lib
-
 python3 grabTitles.py
 
 build() {
@@ -20,7 +19,7 @@ build() {
   export GOOS=android
   export GOARCH=$GOARCH
   export GOARM=$GOARM
-  export CC=$NDK/toolchains/llvm/prebuilt/$PREBUILT/bin/$CC_BIN
+  export CC="$NDK/toolchains/llvm/prebuilt/$PREBUILT/bin/$CC_BIN"
 
   mkdir -p ../android/app/src/main/jniLibs/$ABI
 
@@ -29,18 +28,10 @@ build() {
     -o ../android/app/src/main/jniLibs/$ABI/libwiiudownloader.so
 }
 
-# ARM64
 build arm64 arm64-v8a aarch64-linux-android${API}-clang arm64 ""
-
-# ARMv7a
 build arm armeabi-v7a armv7a-linux-androideabi${API}-clang arm 7
-
-# x86
 build x86 x86 i686-linux-android${API}-clang 386 ""
-
-# x86_64
 build x86_64 x86_64 x86_64-linux-android${API}-clang amd64 ""
-
 
 cd ..
 flutter build apk --release
