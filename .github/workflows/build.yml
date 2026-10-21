@@ -1,80 +1,37 @@
-name: Build Project
+#!/usr/bin/env bash
+set -euo pipefail
 
-permissions:
-  contents: write
-  
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
-  pull_request:
+NDK="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/29.0.14206865}"
+API=21
+PREBUILT=darwin-x86_64
 
-jobs:
-  build:
-    runs-on: macos-15
+cd native_lib
+python3 grabTitles.py
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-        fetch-depth: 0
+build() {
+  ARCH=$1
+  ABI=$2
+  CC_BIN=$3
+  GOARCH=$4
+  GOARM=$5
 
-    - name: Setup golang
-      uses: actions/setup-go@v6
-      with:
-        go-version-file: 'native_lib/go.mod'
+  export CGO_ENABLED=1
+  export GOOS=android
+  export GOARCH=$GOARCH
+  export GOARM=$GOARM
+  export CC="$NDK/toolchains/llvm/prebuilt/$PREBUILT/bin/$CC_BIN"
 
-    - name: Setup Flutter SDK
-      uses: flutter-actions/setup-flutter@v4
-      with:
-        channel: stable
-        version: 3.41.3
+  mkdir -p ../android/app/src/main/jniLibs/$ABI
 
-    - name: Install Flutter dependencies
-      run: flutter pub get
+  go build -buildmode=c-shared \
+    -ldflags="-s -w" \
+    -o ../android/app/src/main/jniLibs/$ABI/libwiiudownloader.so
+}
 
-    - name: Build iOS App
-      run: zsh build_ios.sh
+build arm64 arm64-v8a aarch64-linux-android${API}-clang arm64 ""
+build arm armeabi-v7a armv7a-linux-androideabi${API}-clang arm 7
+build x86 x86 i686-linux-android${API}-clang 386 ""
+build x86_64 x86_64 x86_64-linux-android${API}-clang amd64 ""
 
-    - name: Upload iOS ipa
-      uses: actions/upload-artifact@v4
-      with:
-        name: "WiiUDownloader iOS"
-        path: wiiudownloader.ipa
-
-  create-release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: ./release-assets
-        merge-multiple: true
-    - name: Display structure of downloaded files
-      run: ls -R ./release-assets
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
-
-    - name: Upload IPA
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release-assets/wiiudownloader.ipa
-        asset_name: WiiUDownloader.ipa
-        asset_content_type: application/octet-stream
+cd ..
+flutter build apk --release
