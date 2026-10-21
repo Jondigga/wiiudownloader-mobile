@@ -23,13 +23,6 @@ jobs:
         submodules: recursive
         fetch-depth: 0
 
-    - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
-      id: setup-ndk
-      with:
-        ndk-version: r29
-        add-to-path: false
-
     - name: Setup golang
       uses: actions/setup-go@v6
       with:
@@ -44,19 +37,8 @@ jobs:
     - name: Install Flutter dependencies
       run: flutter pub get
 
-    - name: Build Android App
-      run: zsh build_android.sh
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-
     - name: Build iOS App
       run: zsh build_ios.sh
-
-    - name: Upload Android APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: "WiiUDownloader Android"
-        path: build/app/outputs/flutter-apk/app-release.apk
 
     - name: Upload iOS ipa
       uses: actions/upload-artifact@v4
@@ -86,16 +68,6 @@ jobs:
         release_name: Release ${{ github.ref_name }}
         draft: false
         prerelease: false
-
-    - name: Upload APK
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release-assets/app-release.apk
-        asset_name: WiiUDownloader.apk
-        asset_content_type: application/octet-stream
 
     - name: Upload IPA
       uses: actions/upload-release-asset@v1
